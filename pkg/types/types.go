@@ -39,3 +39,15 @@ type FinalizeRequest struct {
 type FinalizeResponse struct {
 	Body string `json:"body"`
 }
+
+type PrefixItem struct {
+	Keys           PrefixItemKey
+	DateRegistered string
+	DateRestored   string
+	DeleteMarkerId string
+}
+
+type PrefixItemKey struct {
+	PK string
+	SK string
+}
