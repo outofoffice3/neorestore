@@ -34,7 +34,7 @@ func (f *_Finalize) Finalize(ctx context.Context, request interface{}) (interfac
 	}, nil
 }
 
-func NewFinalize(ctx context.Context) Finalizer {
+func NewFinalizer(ctx context.Context) Finalizer {
 	m := manifest.NewManifest("")
 	return &_Finalize{
 		manifest: m,
