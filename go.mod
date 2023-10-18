@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-lambda-go v1.41.0
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.10.42
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.22.2
-	github.com/outofoffice3/common v1.1.0-alpha
+	github.com/outofoffice3/common v1.0.1-alpha
 	github.com/stretchr/testify v1.7.2
 )
 
