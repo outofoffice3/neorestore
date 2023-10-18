@@ -4,7 +4,7 @@ const (
 	NeoDDBSecretName    = "neoRestorer/ddb"
 	ReservedPK          = "chj-aws-poc-neo"
 	ReservedSK          = "neoRestorer"
-	ManifestTableName   = "manifestTableName"
+	ManifestTableName   = "neoRestorer"
 	ManifestPK          = "PK"
 	ManifestSK          = "SK"
 	ListenerFunctionArn = "arn:aws:lambda:us-east-1:017608207428:function:delete-listener-neo"

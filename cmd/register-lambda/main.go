@@ -6,7 +6,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	register "github.com/outofoffice3/neorestore/internal/api"
+	register "github.com/outofoffice3/neorestore/internal/api/register"
 	"github.com/outofoffice3/neorestore/pkg/types"
 )
 
