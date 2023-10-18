@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"context"
+	"errors"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -38,13 +39,14 @@ type _Manifest struct {
 }
 
 func Init() {
-	sos = logger.NewConsoleLogger(logger.LogLevelInfo)
+	sos = logger.NewConsoleLogger(logger.LogLevelDebug)
 	sos.Infof("manifest init completed")
 }
 
 // create new Manifest
 func NewManifest(tableName string) *_Manifest {
 	cfg, err := config.LoadDefaultConfig(context.Background())
+	cfg.Region = "us-east-1"
 	if err != nil {
 		panic(err)
 
@@ -57,8 +59,15 @@ func NewManifest(tableName string) *_Manifest {
 
 // get prefix item
 func (m *_Manifest) GetPrefixItem(key interface{}) (map[string]types.AttributeValue, bool) {
+	// type assert key is type item key
+	keyAssert, ok := key.(registerTypes.PrefixItemKey)
+	// return errors
+	if !ok {
+		sos.Errorf("type assert to prefix item key error")
+		return nil, false
+	}
 	// covert key into map[string]types.AttributeValue
-	convertedKey := utils.StructToMap(key)
+	convertedKey := utils.StructToMap(keyAssert)
 	// get item from table
 	result, err := m.client.GetItem(context.Background(), &dynamodb.GetItemInput{
 		TableName: aws.String(m.tableName),
@@ -69,8 +78,12 @@ func (m *_Manifest) GetPrefixItem(key interface{}) (map[string]types.AttributeVa
 		sos.Errorf("get prefix item error: %v", err)
 		return nil, false
 	}
-	// return item
-	return result.Item, false
+
+	// if empty, return false
+	if result.Item == nil {
+		return nil, false
+	}
+	return result.Item, true
 }
 
 // put prefix item
@@ -114,21 +127,21 @@ func (m *_Manifest) PutPrefixItem(item interface{}) error {
 // remove prefix item
 func (m *_Manifest) RemovePrefixItem(key interface{}) error {
 	// type assert to prefix item
-	prefixItem, ok := key.(registerTypes.PrefixItem)
+	prefixItem, ok := key.(registerTypes.PrefixItemKey)
 	// return errors
 	if !ok {
 		sos.Errorf("type assert to prefix item error")
-		return nil
+		return errors.New("type assert to prefix item error")
 	}
 	// remove item from table
 	_, err := m.client.DeleteItem(context.Background(), &dynamodb.DeleteItemInput{
 		TableName: aws.String(m.tableName),
 		Key: map[string]types.AttributeValue{
 			constants.ManifestPK: &types.AttributeValueMemberS{
-				Value: prefixItem.Keys.PK,
+				Value: prefixItem.PK,
 			},
 			constants.ManifestSK: &types.AttributeValueMemberS{
-				Value: prefixItem.Keys.SK,
+				Value: prefixItem.SK,
 			},
 		},
 	})
@@ -197,6 +210,12 @@ func (m *_Manifest) AddPrefixToPrefixList(prefix string) error {
 
 // put prefix list
 func (m *_Manifest) PutPrefixList(prefix string) error {
+	sos.Debugf("PK name : %v", constants.ManifestPK)
+	sos.Debugf("SK name : %v", constants.ManifestSK)
+	sos.Debugf("prefix attribute name : %v", constants.PrefixListAtt)
+	sos.Debugf("PK : %v", constants.ReservedPK)
+	sos.Debugf("SK : %v", constants.ReservedSK)
+	sos.Debugf("prefix : %v", prefix)
 	_, err := m.client.PutItem(context.Background(), &dynamodb.PutItemInput{
 		TableName: aws.String(m.tableName),
 		Item: map[string]types.AttributeValue{
@@ -217,4 +236,9 @@ func (m *_Manifest) PutPrefixList(prefix string) error {
 		return err
 	}
 	return nil
+}
+
+// return table name
+func (m *_Manifest) GetTableName() string {
+	return m.tableName
 }

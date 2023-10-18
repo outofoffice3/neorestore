@@ -41,13 +41,18 @@ type FinalizeResponse struct {
 }
 
 type PrefixItem struct {
-	Keys           PrefixItemKey
-	DateRegistered string
-	DateRestored   string
-	DeleteMarkerId string
+	Keys           PrefixItemKey `json:"keys"`
+	DateRegistered string        `json:"dateRegistered"`
+	DateRestored   string        `json:"dateRestored"`
+	DeleteMarkerId string        `json:"deleteMarkerId"`
 }
 
 type PrefixItemKey struct {
-	PK string
-	SK string
+	PK string `json:"pk"`
+	SK string `json:"sk"`
+}
+
+type PrefixListItem struct {
+	Keys     PrefixItemKey `json:"keys"`
+	Prefixes []string      `json:"prefixes"`
 }
