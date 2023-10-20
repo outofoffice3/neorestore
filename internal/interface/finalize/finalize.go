@@ -21,7 +21,7 @@ func (f *_Finalize) Finalize(ctx context.Context, request interface{}) (interfac
 	// type assert to finalize request type
 	finalizeRequest, ok := request.(types.FinalizeRequest)
 	if !ok {
-		return nil, errors.New("request not of type FinalizeRequest")
+		return nil, errors.New("request not of type Finalize Request")
 	}
 	// add prefix to prefix list
 	prefix := finalizeRequest.S3BucketName + "/" + finalizeRequest.Prefix
@@ -35,7 +35,7 @@ func (f *_Finalize) Finalize(ctx context.Context, request interface{}) (interfac
 }
 
 func NewFinalizer(ctx context.Context) Finalizer {
-	m := manifest.NewManifest("")
+	m := manifest.NewManifest()
 	return &_Finalize{
 		manifest: m,
 	}

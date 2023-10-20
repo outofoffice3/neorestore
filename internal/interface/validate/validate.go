@@ -53,7 +53,7 @@ func (v *_Validator) validatePrefix(ctx context.Context, request types.ValidateR
 
 // create a new Validator
 func NewValidator(ctx context.Context) Validator {
-	manifest := manifest.NewManifest("")
+	manifest := manifest.NewManifest()
 	return &_Validator{
 		manifest: manifest,
 	}

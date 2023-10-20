@@ -23,7 +23,7 @@ func TestNewManifest(t *testing.T) {
 	a.Nil(err, "error is not nil")
 	tableName := os.Getenv("manifestTableName")
 	// create manifest
-	m := NewManifest(tableName)
+	m := NewManifest()
 	// assert manifest is not nil
 	a.NotNil(m, "manifest is nil")
 	// assert manifest table name is equal to table name
@@ -39,9 +39,8 @@ func TestPrefixList(t *testing.T) {
 	err := godotenv.Load(filePath)
 	// assert error is nil
 	a.Nil(err, "error is not nil")
-	tableName := os.Getenv("manifestTableName")
 	// create manifest
-	m := NewManifest(tableName)
+	m := NewManifest()
 	// put prefix list
 	err = m.PutPrefixList("test-prefix")
 	// assert error is nil
@@ -73,9 +72,8 @@ func TestPrefixItem(t *testing.T) {
 	err := godotenv.Load(filePath)
 	// assert error is nil
 	a.Nil(err, "error is not nil")
-	tableName := os.Getenv("manifestTableName")
 	// create manifest
-	m := NewManifest(tableName)
+	m := NewManifest()
 	// put prefix item
 	item := types.PrefixItem{
 		Keys: types.PrefixItemKey{

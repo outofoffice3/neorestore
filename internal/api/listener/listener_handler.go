@@ -5,7 +5,6 @@ import (
 
 	"github.com/outofoffice3/common/logger"
 	s3deh "github.com/outofoffice3/neorestore/internal/interface/s3-delete-event-handler"
-	"github.com/outofoffice3/neorestore/pkg/constants"
 	"github.com/outofoffice3/neorestore/pkg/types"
 )
 
@@ -16,12 +15,12 @@ var (
 
 func Init() {
 	sos = logger.NewConsoleLogger(logger.LogLevelDebug)
-	s3dh = s3deh.NewS3DeleteEventHandler(context.Background(), constants.ManifestTableName)
+	s3dh = s3deh.NewS3DeleteEventHandler(context.Background())
 	sos.Infof("init listener")
 }
 
-func Handle(ctx context.Context, request types.ListenerRequest) (types.ListenerResponse, error) {
-	result, err := s3dh.HandleEvent(ctx, request)
+func Handle(ctx context.Context, event types.ListenerEvent) (types.ListenerResponse, error) {
+	result, err := s3dh.HandleEvent(ctx, event)
 	if err != nil {
 		return types.ListenerResponse{}, err
 	}

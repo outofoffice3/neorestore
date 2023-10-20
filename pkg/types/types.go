@@ -63,7 +63,7 @@ type RestoreRequest struct {
 	Region       string `json:"region"`
 }
 
-type ListenerRequest struct {
+type ListenerEvent struct {
 	S3ObjectMetadata S3ObjectMetadata `json:"s3ObjectMetadata"`
 	EventMetadata    EventMetadata    `json:"eventMetadata"`
 }

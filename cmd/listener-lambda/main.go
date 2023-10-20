@@ -16,7 +16,7 @@ var (
 
 func Init() {
 	sos = logger.NewConsoleLogger(logger.LogLevelDebug)
-	sos.Infof("init s3 event handler i")
+	sos.Infof("init s3 event handler")
 }
 
 func handler(ctx context.Context, event events.S3Event) error {
@@ -36,11 +36,11 @@ func handler(ctx context.Context, event events.S3Event) error {
 			Version: record.EventVersion,
 			Region:  record.AWSRegion,
 		}
-		listenerRequest := types.ListenerRequest{
+		le := types.ListenerEvent{
 			S3ObjectMetadata: objMetadata,
 			EventMetadata:    eventMetadata,
 		}
-		result, err := listener.Handle(ctx, listenerRequest)
+		result, err := listener.Handle(ctx, le)
 		// return errors
 		if err != nil {
 			return err

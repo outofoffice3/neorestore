@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	sos logger.Logger
+	sos         logger.Logger
+	cachedS3deh S3DeleteEventHandler
 )
 
 type S3DeleteEventHandler interface {
@@ -29,6 +30,8 @@ type _S3DeleteEventHandler struct {
 
 func Init() {
 	sos = logger.NewConsoleLogger(logger.LogLevelDebug)
+	// create new instance of s3deh
+	cachedS3deh = NewS3DeleteEventHandler(context.Background())
 	sos.Infof("init s3 delete event handler")
 }
 
@@ -37,21 +40,21 @@ func SetLogLevel(level logger.LogLevel) {
 	sos.SetLogLevel(level)
 }
 
-func (s3deh *_S3DeleteEventHandler) HandleEvent(ctx context.Context, request interface{}) (interface{}, error) {
-	// type assert to listener request
-	listenerRequest, ok := request.(types.ListenerRequest)
+func (s3deh *_S3DeleteEventHandler) HandleEvent(ctx context.Context, event interface{}) (interface{}, error) {
+	// type assert to listener event
+	le, ok := event.(types.ListenerEvent)
 	if !ok {
-		return nil, errors.New("request not of type listener request")
+		return nil, errors.New("event not of type listener event")
 	}
-	sos.Debugf("listener request : [%+v]", listenerRequest)
+	sos.Debugf("listener event : [%+v]", le)
 	// get the delete marker for the deleted object
-	deleteMarker, err := s3deh.getDeleteMarker(listenerRequest.S3ObjectMetadata)
+	deleteMarker, err := s3deh.getDeleteMarker(le.S3ObjectMetadata)
 	if err != nil {
 		return nil, err
 	}
 	sos.Debugf("delete marker : [%+v]", deleteMarker)
 	// get the matching prefix for the object
-	prefix, err := s3deh.getPrefix(listenerRequest.S3ObjectMetadata)
+	prefix, err := s3deh.getPrefix(le.S3ObjectMetadata)
 	if err != nil {
 		return nil, err
 	}
@@ -59,11 +62,15 @@ func (s3deh *_S3DeleteEventHandler) HandleEvent(ctx context.Context, request int
 	// if the event object and the delete are the same
 	// handle it as a restore event
 	var prefixItem types.PrefixItem
-	if listenerRequest.S3ObjectMetadata.VersionId == deleteMarker.VersionId {
+	if isRestoreEvent(le.S3ObjectMetadata, deleteMarker) {
 		err := s3deh.handleItemRestoreEvent(prefixItem)
 		if err != nil {
 			return nil, err
 		}
+		// return success
+		return types.ListenerResponse{
+			Body: "success",
+		}, nil
 	}
 	// if the event object and the delete are different
 	// handle it as a new delete marker event
@@ -75,17 +82,32 @@ func (s3deh *_S3DeleteEventHandler) HandleEvent(ctx context.Context, request int
 	return types.ListenerResponse{
 		Body: "success",
 	}, nil
-
 }
 
 // handle item restore events
+// update date restored attribute for given item
 func (s3deh *_S3DeleteEventHandler) handleItemRestoreEvent(item types.PrefixItem) error {
+	// update item in manifest
+	err := s3deh.manifest.UpdateItemDateRestored(item)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 // handle new delete marker event
 func (s3deh *_S3DeleteEventHandler) handleNewDeleteMarkerEvent(item types.PrefixItem) error {
+	// put item in manifest
+	err := s3deh.manifest.PutPrefixItem(item)
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+// function to see if the event is a restore event
+func isRestoreEvent(objectMetadata types.S3ObjectMetadata, deleteMarker types.DeleteMarker) bool {
+	return objectMetadata.VersionId == deleteMarker.VersionId
 }
 
 // get delete marker for a deleted s3 object
@@ -147,14 +169,22 @@ func (s3dh *_S3DeleteEventHandler) getPrefix(objectMetadata types.S3ObjectMetada
 }
 
 // create new s3 delete event handler
-func NewS3DeleteEventHandler(ctx context.Context, tableName string) *_S3DeleteEventHandler {
+func NewS3DeleteEventHandler(ctx context.Context) S3DeleteEventHandler {
+	// return cached version if availabe
+	if cachedS3deh != nil {
+		return cachedS3deh
+	}
+	// if nil, create new instance
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		panic(err)
 	}
-	m := manifest.NewManifest(tableName)
-	return &_S3DeleteEventHandler{
+	m := manifest.NewManifest()
+	// update cached version
+	cachedS3deh = &_S3DeleteEventHandler{
 		client:   s3.NewFromConfig(cfg),
 		manifest: m,
 	}
+	// return new instance
+	return cachedS3deh
 }

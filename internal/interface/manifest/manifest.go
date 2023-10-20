@@ -2,13 +2,16 @@ package manifest
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/outofoffice3/common/logger"
+	"github.com/outofoffice3/common/vault"
 	"github.com/outofoffice3/neorestore/pkg/constants"
 	registerTypes "github.com/outofoffice3/neorestore/pkg/types"
 	"github.com/outofoffice3/neorestore/pkg/utils"
@@ -19,6 +22,8 @@ type Manifest interface {
 	GetPrefixItem(key interface{}) (map[string]types.AttributeValue, bool)
 	// put a prefix item to table
 	PutPrefixItem(item interface{}) error
+	// update item date restored
+	UpdateItemDateRestored(item interface{}) error
 	// remove prefix item from table
 	RemovePrefixItem(key interface{}) error
 	// put prefix list
@@ -27,10 +32,15 @@ type Manifest interface {
 	GetPrefixList() map[string]types.AttributeValue
 	// put reserved prefix item to table
 	AddPrefixToPrefixList(prefix string) error
+	// get table name
+	GetTableName() string
 }
 
 var (
-	sos logger.Logger
+	sos             logger.Logger
+	prefixListCache []string
+	localSecrets    map[string]string
+	cachedManifest  Manifest
 )
 
 type _Manifest struct {
@@ -40,21 +50,102 @@ type _Manifest struct {
 
 func Init() {
 	sos = logger.NewConsoleLogger(logger.LogLevelDebug)
+	// get secrets from vault
+	vault, err := vault.NewVault()
+	// return errors
+	if err != nil {
+		panic(err)
+	}
+	// get secrets for dynamodb
+	result, err := vault.GetSecret(constants.NeoDDBSecretName)
+	// return errors
+	if err != nil {
+		panic(err)
+	}
+	sos.Debugf("secrets: [%+v]", result)
+	// type assert that value is equal to string
+	secrets, ok := result.(string)
+	// return errors
+	if !ok {
+		panic(errors.New("type assert to string error"))
+	}
+	sos.Debugf("secrets coverted to string: [%+v]", secrets)
+	// convert json string of secrets to a map
+	// load values to local secrets map
+	err = json.Unmarshal([]byte(secrets), &localSecrets)
+	// return errors
+	if err != nil {
+		panic(err)
+	}
+	// create new manifest instance
+	cachedManifest = NewManifest()
+	/// get prefix list
+	pl := cachedManifest.GetPrefixList()
+	// unmarshall into []string and save to preflix list cache []string
+	err = attributevalue.UnmarshalMap(pl, &prefixListCache)
+	// return errors
+	if err != nil {
+		panic(err)
+	}
 	sos.Infof("manifest init completed")
 }
 
 // create new Manifest
-func NewManifest(tableName string) *_Manifest {
+func NewManifest() Manifest {
+	// if cached manifest is not nil, return it
+	if cachedManifest != nil {
+		return cachedManifest
+	}
+	// if not, create new instance
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	cfg.Region = "us-east-1"
 	if err != nil {
 		panic(err)
-
 	}
-	return &_Manifest{
+	// get table name, pk and sk from secrets
+	tableName := localSecrets["manifestTableName"]
+	// create new instance and saved to cache
+	cachedManifest = &_Manifest{
 		client:    dynamodb.NewFromConfig(cfg),
 		tableName: tableName,
 	}
+	// return cachedManifest
+	return cachedManifest
+}
+
+// update item date restored
+func (m *_Manifest) UpdateItemDateRestored(item interface{}) error {
+	// type assert  item is prefix item
+	prefixItem, ok := item.(registerTypes.PrefixItem)
+	// return errors
+	if !ok {
+		sos.Errorf("type assert to prefix item error")
+		return nil
+	}
+	sos.Debugf("prefix item: [%+v]", prefixItem)
+	// convert keys to map[string]types.attributevalue
+	keys := utils.StructToMap(prefixItem.Keys)
+	sos.Debugf("keys: [%+v]", keys)
+	// update item date restored
+	_, err := m.client.UpdateItem(context.Background(), &dynamodb.UpdateItemInput{
+		TableName:        aws.String(m.tableName),
+		Key:              keys,
+		UpdateExpression: aws.String("SET #dr = :dr"),
+		ExpressionAttributeNames: map[string]string{
+			"#dr": constants.DateRestoredAtt,
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":dr": &types.AttributeValueMemberS{
+				Value: prefixItem.DateRestored,
+			},
+		},
+	})
+	// return errors
+	if err != nil {
+		sos.Errorf("update item date restored error: %v", err)
+		return err
+	}
+	return nil
 }
 
 // get prefix item
@@ -199,7 +290,7 @@ func (m *_Manifest) AddPrefixToPrefixList(prefix string) error {
 	updateItemInput := dynamodb.UpdateItemInput{
 		TableName:                 aws.String(m.tableName),
 		Key:                       keys,
-		UpdateExpression:          &updateExpression,
+		UpdateExpression:          aws.String(updateExpression),
 		ExpressionAttributeValues: expressionAttributeValues,
 		// Add a ConditionExpression to ensure the prefix doesn't already exist
 		ConditionExpression: aws.String("attribute_not_exists(prefixes[:prefixes])"),
@@ -241,4 +332,9 @@ func (m *_Manifest) PutPrefixList(prefix string) error {
 // return table name
 func (m *_Manifest) GetTableName() string {
 	return m.tableName
+}
+
+// return prefixes
+func (m *_Manifest) GetPrefixes() []string {
+	return prefixListCache
 }
