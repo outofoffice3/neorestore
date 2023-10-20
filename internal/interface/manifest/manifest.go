@@ -66,6 +66,7 @@ func (m *_Manifest) GetPrefixItem(key interface{}) (map[string]types.AttributeVa
 		sos.Errorf("type assert to prefix item key error")
 		return nil, false
 	}
+	sos.Debugf("keys: [%+v]", keyAssert)
 	// covert key into map[string]types.AttributeValue
 	convertedKey := utils.StructToMap(keyAssert)
 	// get item from table
@@ -73,12 +74,12 @@ func (m *_Manifest) GetPrefixItem(key interface{}) (map[string]types.AttributeVa
 		TableName: aws.String(m.tableName),
 		Key:       convertedKey,
 	})
+	sos.Debugf("result: [%+v]", result)
 	// return errors
 	if err != nil {
 		sos.Errorf("get prefix item error: %v", err)
 		return nil, false
 	}
-
 	// if empty, return false
 	if result.Item == nil {
 		return nil, false
@@ -95,6 +96,7 @@ func (m *_Manifest) PutPrefixItem(item interface{}) error {
 		sos.Errorf("type assert to prefix item error")
 		return nil
 	}
+	sos.Debugf("prefix item: [%+v]", prefixItem)
 	// put item to table
 	_, err := m.client.PutItem(context.Background(), &dynamodb.PutItemInput{
 		TableName: aws.String(m.tableName),
@@ -133,6 +135,7 @@ func (m *_Manifest) RemovePrefixItem(key interface{}) error {
 		sos.Errorf("type assert to prefix item error")
 		return errors.New("type assert to prefix item error")
 	}
+	sos.Debugf("prefix item: [%+v]", prefixItem)
 	// remove item from table
 	_, err := m.client.DeleteItem(context.Background(), &dynamodb.DeleteItemInput{
 		TableName: aws.String(m.tableName),
@@ -167,6 +170,7 @@ func (m *_Manifest) GetPrefixList() map[string]types.AttributeValue {
 			},
 		},
 	})
+	sos.Debugf("result: [%+v]", result)
 	// return errors
 	if err != nil {
 		sos.Errorf("get reserved prefix list error: %v", err)
@@ -181,7 +185,9 @@ func (m *_Manifest) AddPrefixToPrefixList(prefix string) error {
 		PK: constants.ReservedPK,
 		SK: prefix,
 	})
+	sos.Debugf("keys : [%+v]", keys)
 	newItems := []string{prefix}
+	sos.Debugf("new items [%+v]", newItems)
 	// Append prefix to the attribute list
 	updateExpression := "SET prefixes = list_append(prefixes, :prefixes)"
 	expressionAttributeValues := map[string]types.AttributeValue{
@@ -210,12 +216,6 @@ func (m *_Manifest) AddPrefixToPrefixList(prefix string) error {
 
 // put prefix list
 func (m *_Manifest) PutPrefixList(prefix string) error {
-	sos.Debugf("PK name : %v", constants.ManifestPK)
-	sos.Debugf("SK name : %v", constants.ManifestSK)
-	sos.Debugf("prefix attribute name : %v", constants.PrefixListAtt)
-	sos.Debugf("PK : %v", constants.ReservedPK)
-	sos.Debugf("SK : %v", constants.ReservedSK)
-	sos.Debugf("prefix : %v", prefix)
 	_, err := m.client.PutItem(context.Background(), &dynamodb.PutItemInput{
 		TableName: aws.String(m.tableName),
 		Item: map[string]types.AttributeValue{

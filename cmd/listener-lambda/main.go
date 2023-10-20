@@ -7,19 +7,15 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/outofoffice3/common/logger"
 	"github.com/outofoffice3/neorestore/internal/api/listener"
-	s3deleteeventhandler "github.com/outofoffice3/neorestore/internal/interface/s3-delete-event-handler"
-	"github.com/outofoffice3/neorestore/pkg/constants"
 	"github.com/outofoffice3/neorestore/pkg/types"
 )
 
 var (
-	sos  logger.Logger
-	s3dh s3deleteeventhandler.S3DeleteEventHandler
+	sos logger.Logger
 )
 
 func Init() {
 	sos = logger.NewConsoleLogger(logger.LogLevelDebug)
-	s3dh = s3deleteeventhandler.NewS3DeleteEventHandler(context.Background(), constants.ManifestTableName)
 	sos.Infof("init s3 event handler i")
 }
 
