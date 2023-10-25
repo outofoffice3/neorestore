@@ -3,6 +3,7 @@ module github.com/outofoffice3/neorestore
 go 1.20
 
 require (
+	github.com/YSZhuoyang/go-dispatcher/dispatcher v1.1.2
 	github.com/aws/aws-lambda-go v1.41.0
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.10.42
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.22.2

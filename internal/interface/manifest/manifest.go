@@ -34,6 +34,8 @@ type Manifest interface {
 	AddPrefixToPrefixList(prefix string) error
 	// get table name
 	GetTableName() string
+	// query manifest
+	Query(input *dynamodb.QueryInput) *dynamodb.QueryPaginator
 }
 
 var (
@@ -111,6 +113,11 @@ func NewManifest() Manifest {
 	}
 	// return cachedManifest
 	return cachedManifest
+}
+
+// query manifest
+func (m *_Manifest) Query(input *dynamodb.QueryInput) *dynamodb.QueryPaginator {
+	return dynamodb.NewQueryPaginator(m.client, input)
 }
 
 // update item date restored

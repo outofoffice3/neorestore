@@ -5,8 +5,19 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/outofoffice3/common/logger"
 	"github.com/outofoffice3/neorestore/internal/api/restore"
 )
+
+var (
+	sos logger.Logger
+)
+
+func Init() {
+	sos := logger.NewConsoleLogger(logger.LogLevelDebug)
+	sos.Infof("init restore-ec2")
+
+}
 
 func main() {
 	// create an echo resource
